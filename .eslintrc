@@ -40,8 +40,6 @@
           "allowHigherOrderFunctions": true
         }
       ],
-      // TODO(sglim): Turn on this rule if possible
-      "@typescript-eslint/ban-types": "off",
       "react/display-name": "off",
       "react/prop-types": "off",
       "react/jsx-first-prop-new-line": "off",
@@ -53,22 +51,6 @@
       "react-hooks/exhaustive-deps": "warn",
       "react-hooks/rules-of-hooks": "error"
     },
-    "overrides": [
-      {
-        "files": ["**/*.js?(x)"],
-        "rules": {
-          "@typescript-eslint/explicit-function-return-type": "off",
-          "@typescript-eslint/explicit-module-boundary-types": "off"
-        }
-      },
-      {
-        "files": ["src/**/model*/**/*.ts"],
-        "rules": {
-          "@typescript-eslint/no-namespace": "off",
-          "@typescript-eslint/no-non-null-assertion": "off"
-        }
-      }
-    ],
     "settings": {
       "react": {
         "version": "detect"
