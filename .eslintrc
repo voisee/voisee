@@ -1,0 +1,78 @@
+{
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["@typescript-eslint", "react", "react-hooks"],
+    "extends": [
+      "react-app",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:react/recommended",
+      "prettier",
+      "prettier/react",
+      "prettier/@typescript-eslint",
+      "plugin:prettier/recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2018,
+      "sourceType": "module",
+      "ecmaFeatures": {
+        "jsx": true
+      }
+    },
+    "root": true,
+    "rules": {
+      "lines-between-class-members": "off",
+      "semi": "off",
+      "padding-line-between-statements": [
+        "error",
+        {
+          "blankLine": "always",
+          "prev": ["block", "block-like"],
+          "next": ["const", "let", "var"]
+        }
+      ],
+      "@typescript-eslint/ban-ts-ignore": "off",
+      "@typescript-eslint/camelcase": "off",
+      "@typescript-eslint/no-empty-function": "off",
+      "@typescript-eslint/explicit-function-return-type": [
+        "warn",
+        {
+          "allowExpressions": true,
+          "allowTypedFunctionExpressions": true,
+          "allowHigherOrderFunctions": true
+        }
+      ],
+      // TODO(sglim): Turn on this rule if possible
+      "@typescript-eslint/ban-types": "off",
+      "react/display-name": "off",
+      "react/prop-types": "off",
+      "react/jsx-first-prop-new-line": "off",
+      "react/jsx-curly-spacing": "off",
+      "react/jsx-curly-newline": "off",
+      "react/jsx-handler-names": "off",
+      "react/jsx-pascal-case": "off",
+      "react/jsx-indent": "off",
+      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/rules-of-hooks": "error"
+    },
+    "overrides": [
+      {
+        "files": ["**/*.js?(x)"],
+        "rules": {
+          "@typescript-eslint/explicit-function-return-type": "off",
+          "@typescript-eslint/explicit-module-boundary-types": "off"
+        }
+      },
+      {
+        "files": ["src/**/model*/**/*.ts"],
+        "rules": {
+          "@typescript-eslint/no-namespace": "off",
+          "@typescript-eslint/no-non-null-assertion": "off"
+        }
+      }
+    ],
+    "settings": {
+      "react": {
+        "version": "detect"
+      }
+    }
+  }
+  

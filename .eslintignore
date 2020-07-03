@@ -1,0 +1,3 @@
+# Only files under src/ will be linted.
+/*
+!src/
