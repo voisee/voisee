@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  db:
+    image: mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 'changeme'
+
+  app:
+    build: .
+    volumes:  # hehe
+      - ./:/usr/src/app
+    depends_on:  # depends_on
+      - db
+    ports:  # debugging purpose only, don't expose on production
+      - '3000:3000'
+    environment:
+      DB_PASSWORD: 'changeme'
+
+  nginx:
+    image: nginx:latest
+    command: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - '80:80'
+    depends_on:
+      - app
