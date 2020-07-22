@@ -5,18 +5,18 @@ services:
     image: mariadb
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: 'changeme'
+      MYSQL_ROOT_PASSWORD: 'changeme' # init setting.
 
   app:
     build: .
-    volumes:  # hehe
+    volumes:
       - ./:/usr/src/app
-    depends_on:  # depends_on
+    depends_on:
       - db
     ports:  # debugging purpose only, don't expose on production
       - '3000:3000'
     environment:
-      DB_PASSWORD: 'changeme'
+      DB_PASSWORD: 'changeme' # init setting.
 
   nginx:
     image: nginx:latest
