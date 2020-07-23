@@ -9,7 +9,6 @@ import { paramMissingError } from '@shared/constants';
 const router = Router();
 const userDao = new UserDao();
 
-
 /******************************************************************************
  *                      Get All Users - "GET /api/users/all"
  ******************************************************************************/
