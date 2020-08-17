@@ -1,24 +1,23 @@
-import { Request, Response, Router, query } from 'express';
+import { Router } from 'express';
 import { BAD_REQUEST, CREATED, OK } from 'http-status-codes';
-import { ParamsDictionary } from 'express-serve-static-core';
-import { paramMissingError } from '@shared/constants';
-
+import { paramMissingError } from '../utils/constants';
+import { mysql_dbc } from '../migrations/db_con';
 // Init shared
 const router = Router();
 
 // db Connection
-import mysql_dbc from '../db/db_con';
-const connection = mysql_dbc().init();
+const connection = mysql_dbc.init();
 
 
-/* GET Category List (Category ID, Category Name)*/
-router.get('/', async(req: Request, res: Response) => {
+/* GET Category List (Category ID, Category Name) */
+router.get('/', async(req, res) => {
     const sql = 'SELECT * FROM categories';
-    
-    await connection.query(sql, function(err: any, rows: any, fields: any){
+    await connection.query(sql, function(err, rows, fields){
+        console.log(err);
         if(err) {
             res
                 .status(BAD_REQUEST)
+                .end();
         } else {
             res
                 .status(OK)
@@ -30,7 +29,7 @@ router.get('/', async(req: Request, res: Response) => {
 })
 
 /* INSERT new Category */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req, res) => {
         const categoryName = req.body.categoryname;
         if(!categoryName){
             return res.status(BAD_REQUEST).json({
@@ -40,7 +39,7 @@ router.post('/', async (req: Request, res: Response) => {
 
         const sql = 'INSERT INTO categories(categoryname) VALUES (?)';
         
-        await connection.query(sql, [categoryName], function(err: any, rows: any, fields: any){
+        await connection.query(sql, [categoryName], function(err, rows, fields){
             if(err){
                 if(err.code == "ER_DUP_ENTRY"){
                     const resPayload = {
@@ -63,7 +62,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 /* DELETE Category using Category ID */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req, res) => {
     const categoryId = req.body.categoryid;
     if(!categoryId){
         return res.status(BAD_REQUEST).json({
@@ -73,7 +72,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     
     const sql = 'DELETE FROM categories WHERE categoryid = ?';
 
-    await connection.query(sql, [categoryId], function(err: any, rows: any, fields: any){
+    await connection.query(sql, [categoryId], function(err, rows, fields){
         if(err){
             res
                 .status(BAD_REQUEST)
@@ -96,7 +95,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 /* UPDATE Category Name using Category ID */
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', async (req, res) => {
     const categoryId = req.body.categoryid;
     const categoryName = req.body.categoryname;
     
@@ -108,7 +107,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const sql = 'UPDATE categories SET categoryname= ? WHERE categoryid= ?';
 
-    await connection.query(sql, [categoryName, categoryId], function(err: any, rows: any, fields: any){
+    await connection.query(sql, [categoryName, categoryId], function(err, rows, fields){
         if(err){
             res
                 .status(BAD_REQUEST)
@@ -127,8 +126,6 @@ router.put('/:id', async (req: Request, res: Response) => {
             }
         }
     });
-})
+});
 
-
-
-export default router;
+module.exports = router;

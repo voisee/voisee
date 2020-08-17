@@ -1,5 +1,24 @@
 # voisee
 
+### How to deploy
+
+#### production
+
+```bash
+docker-compose up -d
+curl http://localhost:80 # test connection
+```
+
+#### development
+
+```bash
+docker-compose up -d db
+yarn start:dev
+curl http://localhost:3000  # test connection
+```
+
+
+
 ### 커밋 컨벤션
 
 #### 1) 기본 형식
