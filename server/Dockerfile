@@ -1,15 +1,14 @@
 FROM node:latest
 
 WORKDIR /usr/src/app
-VOLUME /usr/src/app
-# COPY package*.json ./
 
-ENV NODE_ENV production
+COPY package*.json ./
+RUN npm ci --only=production
 
-RUN yarn
-RUN npm install -g nodemon
-RUN yarn add mysql
+COPY . .
 
-EXPOSE 3000
+ENV PORT=80
+EXPOSE 80
+ENV NODE_ENV=production
 
-CMD ["yarn", "start:dev"]
+CMD yarn start
