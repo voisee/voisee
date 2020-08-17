@@ -8,7 +8,6 @@ const router = Router();
 // db Connection
 const connection = mysql_dbc.init();
 
-
 /* GET Category List (Category ID, Category Name) */
 router.get('/', async(req, res) => {
     const sql = 'SELECT * FROM categories';
@@ -63,7 +62,7 @@ router.post('/', async (req, res) => {
 
 /* DELETE Category using Category ID */
 router.delete('/:id', async (req, res) => {
-    const categoryId = req.body.categoryid;
+    const categoryId = req.params.id;
     if(!categoryId){
         return res.status(BAD_REQUEST).json({
             error: paramMissingError
