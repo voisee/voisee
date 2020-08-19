@@ -1,0 +1,14 @@
+.Home {
+  display: flex;
+  flex-direction: row;
+}
+
+.dashboard_container {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  background-color: rgba(242, 243, 248, 0.5);
+  padding: 45px;
+}
+.right_side {
+}
