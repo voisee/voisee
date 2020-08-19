@@ -1,5 +1,5 @@
 import React from 'react'
-import './style.css'
+import { Container, ProfilePhoto, Name, Position } from './style'
 
 type ProfileProps = {
   name: string
@@ -8,11 +8,11 @@ type ProfileProps = {
 
 const Profile: React.FC<ProfileProps> = ({ name, position }) => {
   return (
-    <div className="profile_container">
-      <div className="profile_photo"></div>
-      <div className="name">{name}</div>
-      <div className="position">{position}</div>
-    </div>
+    <Container>
+      <ProfilePhoto />
+      <Name>{name}</Name>
+      <Position>{position}</Position>
+    </Container>
   )
 }
 

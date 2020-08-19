@@ -1,25 +1,25 @@
 import React from 'react'
 import Profile from 'components/Profile'
 import { voiseeDemoRepository, sampleEmail } from 'constants/externalLink'
-import './style.css'
+import { Container, Navigator, NavTitle, SidebarMenu } from './style'
 
 const Sidebar: React.FC = () => {
   return (
-    <div className="sidebar_container">
+    <Container>
       <div>
         <Profile name="김아무개" position={sampleEmail} />
-        <nav className="sidebar_nav">
-          <p className="sidebar_nav_title">Category</p>
-          <ul className="sidebar_menu">
+        <Navigator>
+          <NavTitle>Category</NavTitle>
+          <SidebarMenu>
             <li>
               <a href="#">Home</a>
             </li>
-          </ul>
-        </nav>
+          </SidebarMenu>
+        </Navigator>
       </div>
-      <nav className="sidebar_nav">
-        <p className="sidebar_nav_title">Opensource</p>
-        <ul className="sidebar_menu">
+      <Navigator>
+        <NavTitle>Opensource</NavTitle>
+        <SidebarMenu>
           <li>
             <a href={voiseeDemoRepository}>Contribute</a>
           </li>
@@ -32,9 +32,9 @@ const Sidebar: React.FC = () => {
               Github
             </a>
           </li>
-        </ul>
-      </nav>
-    </div>
+        </SidebarMenu>
+      </Navigator>
+    </Container>
   )
 }
 
