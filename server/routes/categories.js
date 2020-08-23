@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { BAD_REQUEST, CREATED, OK } from 'http-status-codes';
-import { paramMissingError } from '../utils/constants';
+import { paramMissingError, DoesNotExistError } from '../utils/constants';
 import { mysql_dbc } from '../migrations/db_con';
+
+const wrapper = require('../src/interface/wrapper.js').wrapper;
+
 // Init shared
 const router = Router();
 
@@ -9,10 +12,10 @@ const router = Router();
 const connection = mysql_dbc.init();
 
 /* GET Category List (Category ID, Category Name) */
-router.get('/', async(req, res) => {
+router.get('/', wrapper(async(req, res, next) => {
     const sql = 'SELECT * FROM categories';
-    await connection.query(sql, function(err, rows, fields){
-        console.log(err);
+    connection.query(sql, function(err, rows, fields){
+        //console.log(err);
         if(err) {
             res
                 .status(BAD_REQUEST)
@@ -25,10 +28,10 @@ router.get('/', async(req, res) => {
         }
     })
     
-})
+}));
 
 /* INSERT new Category */
-router.post('/', async (req, res) => {
+router.post('/', wrapper(async (req, res, next) => {
         const categoryName = req.body.categoryname;
         if(!categoryName){
             return res.status(BAD_REQUEST).json({
@@ -38,7 +41,7 @@ router.post('/', async (req, res) => {
 
         const sql = 'INSERT INTO categories(categoryname) VALUES (?)';
         
-        await connection.query(sql, [categoryName], function(err, rows, fields){
+        connection.query(sql, [categoryName], function(err, rows, fields){
             if(err){
                 if(err.code == "ER_DUP_ENTRY"){
                     const resPayload = {
@@ -47,10 +50,12 @@ router.post('/', async (req, res) => {
                     res
                         .status(BAD_REQUEST)
                         .json(resPayload)
+                        .end();
                 }
                 else{
                     res
                         .status(BAD_REQUEST)
+                        .end();
                 }   
             } else {
                 res
@@ -58,10 +63,10 @@ router.post('/', async (req, res) => {
                     .end();
             }
         })
-});
+}));
 
 /* DELETE Category using Category ID */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', wrapper(async (req, res) => {
     const categoryId = req.params.id;
     if(!categoryId){
         return res.status(BAD_REQUEST).json({
@@ -75,14 +80,16 @@ router.delete('/:id', async (req, res) => {
         if(err){
             res
                 .status(BAD_REQUEST)
+                .end();
         } else {
             if(!rows.affectedRows){
                 const resPayload = {
-                    message: "That categoryId doesn't exist",
+                    message: DoesNotExistError,
                 }
                 res
                     .status(BAD_REQUEST)
                     .json(resPayload)
+                    .end();
             } else{
                 console.log(rows);
                 res
@@ -91,11 +98,11 @@ router.delete('/:id', async (req, res) => {
             }
         }
     });
-});
+}));
 
 /* UPDATE Category Name using Category ID */
-router.put('/:id', async (req, res) => {
-    const categoryId = req.body.categoryid;
+router.put('/:id', wrapper(async (req, res) => {
+    const categoryId = req.params.id;
     const categoryName = req.body.categoryname;
     
     if(!categoryId || !categoryName){
@@ -110,14 +117,16 @@ router.put('/:id', async (req, res) => {
         if(err){
             res
                 .status(BAD_REQUEST)
+                .end();
         } else{
             if(!rows.affectedRows){
                 const resPayload = {
-                    message: "That categoryId doesn't exist",
+                    message: DoesNotExistError,
                 }
                 res
                     .status(BAD_REQUEST)
                     .json(resPayload)
+                    .end();
             } else {
                 res
                     .status(OK)
@@ -125,6 +134,6 @@ router.put('/:id', async (req, res) => {
             }
         }
     });
-});
+}));
 
 module.exports = router;
