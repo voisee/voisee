@@ -16,4 +16,6 @@ const Profile: React.FC<ProfileProps> = ({ name, position }) => {
   )
 }
 
-export default Profile
+const MemoizedProfile = React.memo(Profile)
+
+export default MemoizedProfile
