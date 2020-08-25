@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { BAD_REQUEST, CREATED, OK } from 'http-status-codes';
-import { paramMissingError, DoesNotExistError } from '../utils/constants';
+import { paramMissingError, DoesNotExistError, duplicateError } from '../utils/constants';
 import { mysql_dbc } from '../migrations/db_con';
 
 const wrapper = require('../src/interface/wrapper.js').wrapper;
@@ -45,7 +45,7 @@ router.post('/', wrapper(async (req, res, next) => {
             if(err){
                 if(err.code == "ER_DUP_ENTRY"){
                     const resPayload = {
-                        message: err.message,
+                        message: duplicateError,
                     }
                     res
                         .status(BAD_REQUEST)

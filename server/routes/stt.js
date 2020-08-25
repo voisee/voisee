@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { BAD_REQUEST, CREATED, OK } from 'http-status-codes';
-import { paramMissingError, DoesNotExistError } from '../utils/constants';
+import { paramMissingError, DoesNotExistError, duplicateError } from '../utils/constants';
 import { mysql_dbc } from '../migrations/db_con';
 
 const router = Router();
@@ -37,6 +37,35 @@ const upload = multer({
 
 // 클라이언트에서 보낸 음성파일을 받아 s3에 업로드 후 stt 실행
 router.post('/', upload.single('mediaFile'), wrapper(async(req, res, next) => {
+    // 대화명, 카테고리 지정
+    const statementName = req.body.statementName;
+    const categoryId = req.body.categoryId;
+
+    if(!statementName){
+        return res.status(BAD_REQUEST).json({
+            error: paramMissingError
+        })
+    }
+
+    // 대화명 중복 체크
+    const checkSql = `SELECT statement_name FROM statements where statement_name = (?)`;
+
+    connection.query(checkSql, [statementName], function(err, rows, fields){
+        if(err){
+            res
+                .status(BAD_REQUEST)
+                .end();
+        } else if(rows[0]){
+            const resPayload = {
+                message: duplicateError,
+            }
+            res
+                .status(BAD_REQUEST)
+                .json(resPayload)
+                .end();
+        }
+    })
+
     // s3상에서 업로드한 파일의 위치
     const fileLocation = req.file.location;
 
@@ -56,8 +85,8 @@ router.post('/', upload.single('mediaFile'), wrapper(async(req, res, next) => {
     });  
     */
 
-    /************음성파일 변환 실행 **************/
 
+    /************음성파일 변환 실행 **************/
 
     // transcibeservice 객체 생성
     const transcribeservice = new AWS.TranscribeService({apiVersion: '2017-10-26'});
@@ -83,15 +112,34 @@ router.post('/', upload.single('mediaFile'), wrapper(async(req, res, next) => {
     transcribeservice.startTranscriptionJob(params, function (err, data) {
         if (err){
             console.log(err, err.stack);
+            const resPayload = {
+                message: err.message,
+            }
             res
-                .status(500)
+                .status(BAD_REQUEST)
+                .json(resPayload)
                 .end();
         }
         else{
-            res.send(data);
+
+            const sql = `INSERT INTO statements(categoryid, status, statement_name) VALUES(?, ?, ?)`;
+            connection.query(sql, [categoryId, 0, statementName], function(err, rows, fields){
+                if(err){
+                    console.log(err);
+                    res
+                        .status(BAD_REQUEST)
+                        .end();
+                } else {
+                    res
+                        .status(CREATED)
+                        .end();
+                }
+            })
+            
         }
     });
     
 }));
+
 
 module.exports = router;
