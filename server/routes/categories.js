@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { BAD_REQUEST, CREATED, OK } from 'http-status-codes';
-import { paramMissingError, DoesNotExistError } from '../utils/constants';
+import { paramMissingError, DoesNotExistError, duplicateError } from '../utils/constants';
 import { mysql_dbc } from '../migrations/db_con';
 
 const wrapper = require('../src/interface/wrapper.js').wrapper;
@@ -43,9 +43,9 @@ router.post('/', wrapper(async (req, res, next) => {
         
         connection.query(sql, [categoryName], function(err, rows, fields){
             if(err){
-                if(err.code == "ER_DUP_ENTRY"){
+                if(err.code === "ER_DUP_ENTRY"){
                     const resPayload = {
-                        message: err.message,
+                        message: duplicateError,
                     }
                     res
                         .status(BAD_REQUEST)
@@ -76,7 +76,7 @@ router.delete('/:id', wrapper(async (req, res) => {
     
     const sql = 'DELETE FROM categories WHERE categoryid = ?';
 
-    await connection.query(sql, [categoryId], function(err, rows, fields){
+    connection.query(sql, [categoryId], function(err, rows, fields){
         if(err){
             res
                 .status(BAD_REQUEST)
@@ -113,7 +113,7 @@ router.put('/:id', wrapper(async (req, res) => {
 
     const sql = 'UPDATE categories SET categoryname= ? WHERE categoryid= ?';
 
-    await connection.query(sql, [categoryName, categoryId], function(err, rows, fields){
+    connection.query(sql, [categoryName, categoryId], function(err, rows, fields){
         if(err){
             res
                 .status(BAD_REQUEST)
