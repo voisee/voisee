@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { BAD_REQUEST, CREATED, OK } from 'http-status-codes';
-import { paramMissingError, DoesNotExistError, duplicateError } from '../utils/constants';
+import { paramMissingError, DoesNotExistError, duplicateError, queryError } from '../utils/constants';
 import { mysql_dbc } from '../migrations/db_con';
 
 const router = Router();
@@ -44,38 +44,34 @@ router.post('/', upload.single('mediaFile'), wrapper(async (req, res, next) => {
     const statementName = req.body.statementName;
     const categoryId = req.body.categoryid;
     const language = req.body.language === "korean" ? "ko-KR" : "en-US";
-    
-    if (!statementName) {
-        return res.status(BAD_REQUEST).json({
-            error: paramMissingError
-        })
-    }
-
-    // 대화명 중복 체크
-    const checkSql = `SELECT statement_name FROM statements where statement_name = (?)`;
-
-    connection.query(checkSql, [statementName], function (err, rows, fields) {
-        if (err) {
-            res
-                .status(BAD_REQUEST)
-                .end();
-        } else if (rows[0]) {
-            const resPayload = {
-                message: duplicateError,
-            }
-            res
-                .status(BAD_REQUEST)
-                .json(resPayload)
-                .end();
-        }
-    })
-
-    // s3상에서 업로드한 파일의 위치
-    const fileLocation = req.file.location;
 
     // job 이름 랜덤으로 생성
     const jobName = shortId.generate();
     //console.log("Job Name: " + jobName);
+
+    // s3에 업로드한 파일의 경로
+    const fileLocation = req.file.location;
+
+    // db에 job정보 insert
+    const sql = `INSERT INTO statements(categoryid, status, statement_name, job_name) VALUES(?, ?, ?, ?)`;
+    connection.query(sql, [categoryId, 0, statementName, jobName], function (err, rows, fields) {
+        if (err) {
+            if (err.code === "ER_DUP_ENTRY") {
+                const resPayload = {
+                    message: duplicateError,
+                }
+                res
+                    .status(BAD_REQUEST)
+                    .json(resPayload)
+                    .end();
+            }
+            else {
+                res
+                    .status(BAD_REQUEST)
+                    .end();
+            }
+        }
+    })
 
     /*
     // 현재 액세스하는 키와 리전 확인
@@ -92,6 +88,7 @@ router.post('/', upload.single('mediaFile'), wrapper(async (req, res, next) => {
 
     /************음성파일 변환 실행 **************/
 
+    // 옵션 지정
     const params = {
         LanguageCode: language, // 작업에서 사용할 언어
         Media: {
@@ -109,11 +106,20 @@ router.post('/', upload.single('mediaFile'), wrapper(async (req, res, next) => {
             ShowSpeakerLabels: true, // speaker를 구분해서 라벨 보여줄 것인가
         }
     };
-    
+
     // 변환 실행
     transcribeservice.startTranscriptionJob(params, function (err, data) {
         if (err) {
+            // 에러가 발생하면 db에 저장했던 job 삭제
+            const sql = `DELETE FROM statements WHERE job_name = ?`;
+
+            connection.query(sql, [jobName], function (err, rows, fields) {
+                if (err) {
+                    console.log(err);
+                }
+            })
             console.log(err, err.stack);
+
             const resPayload = {
                 message: err.message,
             }
@@ -123,39 +129,53 @@ router.post('/', upload.single('mediaFile'), wrapper(async (req, res, next) => {
                 .end();
         }
         else {
-            const sql = `INSERT INTO statements(categoryid, status, statement_name, job_name) VALUES(?, ?, ?, ?)`;
-            connection.query(sql, [categoryId, 0, statementName, jobName], function (err, rows, fields) {
-                if (err) {
-                    console.log(err);
-                    res
-                        .status(BAD_REQUEST)
-                        .end();
-                } else {
-                    res
-                        .status(CREATED)
-                        .end();
-                }
-            })
-
+            res
+                .status(CREATED)
+                .end();
         }
     });
-
 }));
 
-// 카테고리아이디를 받아 완료된 작업 결과를 전송
-router.get('/getResult/:id', wrapper(async (req, res, next) => {
-    const categoryId = req.params.id;
+// 대화명을 받아 완료된 작업 결과를 전송
+router.get('/getResult/:name', wrapper(async (req, res, next) => {
+    const statementName = req.params.name;
 
-    const sql = `SELECT * FROM statements WHERE categoryid = (?)`;
+    const sql = `SELECT * FROM statements WHERE statement_name = (?)`;
 
-    connection.query(sql, [categoryId], function (err, rows, fields) {
+    connection.query(sql, [statementName], function (err, rows, fields) {
         if (err) {
             res
                 .status(BAD_REQUEST)
                 .end();
         } else {
-            if (rows[0].status == 0) {
-                console.log(rows[0].status);
+            // 이미 완료한 작업일 때 db에서 작업 결과를 보냄
+            if (rows[0].status == 1) {
+                const sql = `SELECT * FROM contents WHERE statement_name = (?) ORDER BY start_time`;
+                connection.query(sql, [statementName], function (err, rows, fields) {
+                    if (err) {
+                        console.log(err);
+                        res
+                            .status(BAD_REQUEST)
+                            .end();
+                    }
+                    else {
+                        const statements = new Array();
+                        for (let i = 0; i < rows.length; i++) {
+                            const stObject = new Object();
+                            stObject.spk_label = rows[i].spk_label;
+                            stObject.start_time = rows[i].start_time;
+                            stObject.end_time = rows[i].end_time;
+                            stObject.content = rows[i].content;
+                            statements.push(stObject);
+                        }
+                        res
+                            .status(OK)
+                            .json(statements)
+                            .end()
+                    }
+                })
+            }
+            else if (rows[0].status == 0) {
                 const jobName = rows[0].job_name;
                 console.log(jobName);
                 var params = {
@@ -179,6 +199,9 @@ router.get('/getResult/:id', wrapper(async (req, res, next) => {
                                         const itemSize = resultData.results.items.length
                                         const spkNum = resultData.results.speaker_labels.speakers;
 
+                                        // 결과를 db에 저장하는 쿼리
+                                        const sql = `INSERT INTO contents(statement_name, spk_label, start_time, end_time, content) values (?,?,?,?,?)`;
+
                                         const statements = new Array();
 
                                         let segments = [];
@@ -189,7 +212,6 @@ router.get('/getResult/:id', wrapper(async (req, res, next) => {
                                             const startTime = parseFloat(resultData.results.speaker_labels.segments[i].start_time);
                                             const endTime = parseFloat(resultData.results.speaker_labels.segments[i].end_time);
                                             let speaker = resultData.results.speaker_labels.segments[i].speaker_label;
-
                                             let string = "";
 
                                             for (j; j < itemSize - 1; j++) {
@@ -214,15 +236,45 @@ router.get('/getResult/:id', wrapper(async (req, res, next) => {
                                             stObject.end_time = endTime;
                                             stObject.content = string;
 
+                                            connection.query(sql, [statementName, speaker, startTime, endTime, string], function (err, rows, fields) {
+                                                if (err) console.log(err);
+                                            })
+
                                             statements.push(stObject);
                                         }
                                         console.log(statements);
+
                                         res
                                             .json(statements)
                                             .status(OK)
                                             .end();
                                     } catch (err) {
                                         console.log(err);
+                                    }
+                                }
+                            });
+
+                            // 작업이 완료되었다면 statements 테이블의 해당 작업 status 컬럼을 1(완료)로 업데이트
+                            const sql = 'UPDATE statements SET status= ? WHERE statement_name= ?';
+
+                            connection.query(sql, [1, statementName], function (err, rows, fields) {
+                                if (err) {
+                                    const resPayload = {
+                                        message: queryError,
+                                    }
+                                    res
+                                        .status(BAD_REQUEST)
+                                        .json(resPayload)
+                                        .end();
+                                } else {
+                                    if (!rows.affectedRows) {
+                                        const resPayload = {
+                                            message: DoesNotExistError,
+                                        }
+                                        res
+                                            .status(BAD_REQUEST)
+                                            .json(resPayload)
+                                            .end();
                                     }
                                 }
                             });
@@ -239,22 +291,30 @@ router.get('/getResult/:id', wrapper(async (req, res, next) => {
                         }
                         // 작업이 대기열에 있음
                         else if (data.TranscriptionJob.TranscriptionJobStatus == 'QUEUED') {
-
+                            const resPayload = {
+                                message: 'The job is in the queue.',
+                            }
+                            res
+                                .status(BAD_REQUEST)
+                                .json(resPayload)
+                                .end();
                         }
                         // 작업이 실패함
                         else {
-
+                            const resPayload = {
+                                message: 'The job is failed.',
+                            }
+                            res
+                                .status(BAD_REQUEST)
+                                .json(resPayload)
+                                .end();
                         }
                     }
                 });
-            }
-            else {
-
             }
         }
     })
 
 }));
-
 
 module.exports = router;

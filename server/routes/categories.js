@@ -43,7 +43,7 @@ router.post('/', wrapper(async (req, res, next) => {
         
         connection.query(sql, [categoryName], function(err, rows, fields){
             if(err){
-                if(err.code == "ER_DUP_ENTRY"){
+                if(err.code === "ER_DUP_ENTRY"){
                     const resPayload = {
                         message: duplicateError,
                     }
@@ -76,7 +76,7 @@ router.delete('/:id', wrapper(async (req, res) => {
     
     const sql = 'DELETE FROM categories WHERE categoryid = ?';
 
-    await connection.query(sql, [categoryId], function(err, rows, fields){
+    connection.query(sql, [categoryId], function(err, rows, fields){
         if(err){
             res
                 .status(BAD_REQUEST)
@@ -113,7 +113,7 @@ router.put('/:id', wrapper(async (req, res) => {
 
     const sql = 'UPDATE categories SET categoryname= ? WHERE categoryid= ?';
 
-    await connection.query(sql, [categoryName, categoryId], function(err, rows, fields){
+    connection.query(sql, [categoryName, categoryId], function(err, rows, fields){
         if(err){
             res
                 .status(BAD_REQUEST)
