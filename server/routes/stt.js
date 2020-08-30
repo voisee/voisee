@@ -23,13 +23,26 @@ const s3 = new AWS.S3();
 // transcibeservice 객체 생성
 const transcribeservice = new AWS.TranscribeService({ apiVersion: '2017-10-26' });
 
+// jobName getter&setter
+let job = {
+    name: "",
+    get jobName() {
+        return this.name;
+    },
+    set jobName(value) {
+        this.name = value;
+    }
+}
+
+
 // s3에 업로드하기 위한 옵션 설정
 const upload = multer({
     storage: multerS3({
         s3: s3,
         bucket: "voisee",
         key: function (req, file, cb) {
-            let mediaName = shortId.generate();
+            job.name = shortId.generate();
+            let mediaName = job.name;
             let extension = path.extname(file.originalname);
             cb(null, mediaName + extension);
         },
@@ -41,13 +54,10 @@ const upload = multer({
 // 클라이언트에서 보낸 음성파일을 받아 s3에 업로드 후 stt 실행
 router.post('/', upload.single('mediaFile'), wrapper(async (req, res, next) => {
     // 대화명, 카테고리, 언어 지정s
-    const statementName = req.body.statementName;
+    const statementName = req.body.statement_name;
     const categoryId = req.body.categoryid;
     const language = req.body.language === "korean" ? "ko-KR" : "en-US";
-
-    // job 이름 랜덤으로 생성
-    const jobName = shortId.generate();
-    //console.log("Job Name: " + jobName);
+    const jobName = job.name;
 
     // s3에 업로드한 파일의 경로
     const fileLocation = req.file.location;
@@ -129,8 +139,12 @@ router.post('/', upload.single('mediaFile'), wrapper(async (req, res, next) => {
                 .end();
         }
         else {
+            const resPayload = {
+                jobName: jobName,
+            }
             res
                 .status(CREATED)
+                .json(resPayload)
                 .end();
         }
     });
@@ -138,11 +152,11 @@ router.post('/', upload.single('mediaFile'), wrapper(async (req, res, next) => {
 
 // 대화명을 받아 완료된 작업 결과를 전송
 router.get('/getResult/:name', wrapper(async (req, res, next) => {
-    const statementName = req.params.name;
+    const jobName = req.params.name;
 
-    const sql = `SELECT * FROM statements WHERE statement_name = (?)`;
+    const sql = `SELECT * FROM statements WHERE job_name = (?)`;
 
-    connection.query(sql, [statementName], function (err, rows, fields) {
+    connection.query(sql, [jobName], function (err, rows, fields) {
         if (err) {
             res
                 .status(BAD_REQUEST)
@@ -150,8 +164,8 @@ router.get('/getResult/:name', wrapper(async (req, res, next) => {
         } else {
             // 이미 완료한 작업일 때 db에서 작업 결과를 보냄
             if (rows[0].status == 1) {
-                const sql = `SELECT * FROM contents WHERE statement_name = (?) ORDER BY start_time`;
-                connection.query(sql, [statementName], function (err, rows, fields) {
+                const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`;
+                connection.query(sql, [jobName], function (err, rows, fields) {
                     if (err) {
                         console.log(err);
                         res
@@ -176,8 +190,6 @@ router.get('/getResult/:name', wrapper(async (req, res, next) => {
                 })
             }
             else if (rows[0].status == 0) {
-                const jobName = rows[0].job_name;
-                console.log(jobName);
                 var params = {
                     TranscriptionJobName: jobName /* required */
                 };
@@ -186,79 +198,12 @@ router.get('/getResult/:name', wrapper(async (req, res, next) => {
                     else {
                         // 완료된 작업 데이터 보내기
                         if (data.TranscriptionJob.TranscriptionJobStatus == 'COMPLETED') {
-                            s3.getObject({ Bucket: "voisee", Key: `${jobName}.json` }, function (err, data) {
-                                if (err) {
-                                    res
-                                        .status(BAD_REQUEST)
-                                        .end();
-                                } else {
-                                    try {
-                                        let resultData = JSON.parse(data.Body.toString('utf-8'));
-
-                                        const segSize = resultData.results.speaker_labels.segments.length;
-                                        const itemSize = resultData.results.items.length
-                                        const spkNum = resultData.results.speaker_labels.speakers;
-
-                                        // 결과를 db에 저장하는 쿼리
-                                        const sql = `INSERT INTO contents(statement_name, spk_label, start_time, end_time, content) values (?,?,?,?,?)`;
-
-                                        const statements = new Array();
-
-                                        let segments = [];
-
-                                        let j = 0;
-                                        for (let i = 0; i < segSize; i++) {
-                                            const stObject = new Object();
-                                            const startTime = parseFloat(resultData.results.speaker_labels.segments[i].start_time);
-                                            const endTime = parseFloat(resultData.results.speaker_labels.segments[i].end_time);
-                                            let speaker = resultData.results.speaker_labels.segments[i].speaker_label;
-                                            let string = "";
-
-                                            for (j; j < itemSize - 1; j++) {
-                                                const tempString = resultData.results.items[j].alternatives[0].content;
-                                                const stringType = resultData.results.items[j + 1].type;
-                                                if (resultData.results.items[j].type === "punctuation") {
-                                                    string += tempString + ' ';
-                                                    continue;
-                                                }
-                                                if (parseFloat(resultData.results.items[j].end_time) <= endTime) {
-                                                    string += tempString;
-                                                    if (stringType === "pronunciation") string += ' ';
-                                                }
-                                                else break;
-                                            }
-
-                                            if (j == itemSize - 1) string += resultData.results.items[j].alternatives[0].content;
-                                            segments.push(string);
-
-                                            stObject.spk_label = speaker;
-                                            stObject.start_time = startTime;
-                                            stObject.end_time = endTime;
-                                            stObject.content = string;
-
-                                            connection.query(sql, [statementName, speaker, startTime, endTime, string], function (err, rows, fields) {
-                                                if (err) console.log(err);
-                                            })
-
-                                            statements.push(stObject);
-                                        }
-                                        console.log(statements);
-
-                                        res
-                                            .json(statements)
-                                            .status(OK)
-                                            .end();
-                                    } catch (err) {
-                                        console.log(err);
-                                    }
-                                }
-                            });
-
                             // 작업이 완료되었다면 statements 테이블의 해당 작업 status 컬럼을 1(완료)로 업데이트
-                            const sql = 'UPDATE statements SET status= ? WHERE statement_name= ?';
+                            const sql = 'UPDATE statements SET status= ? WHERE job_name= ?';
 
-                            connection.query(sql, [1, statementName], function (err, rows, fields) {
+                            connection.query(sql, [1, jobName], function (err, rows, fields) {
                                 if (err) {
+                                    console.log(err);
                                     const resPayload = {
                                         message: queryError,
                                     }
@@ -266,8 +211,7 @@ router.get('/getResult/:name', wrapper(async (req, res, next) => {
                                         .status(BAD_REQUEST)
                                         .json(resPayload)
                                         .end();
-                                } else {
-                                    if (!rows.affectedRows) {
+                                } else if (!rows.affectedRows) {
                                         const resPayload = {
                                             message: DoesNotExistError,
                                         }
@@ -275,9 +219,80 @@ router.get('/getResult/:name', wrapper(async (req, res, next) => {
                                             .status(BAD_REQUEST)
                                             .json(resPayload)
                                             .end();
-                                    }
+                                } else{
+                                    s3.getObject({ Bucket: "voisee", Key: `${jobName}.json` }, function (err, result) {
+                                        if (err) {
+                                            res
+                                                .status(BAD_REQUEST)
+                                                .end();
+                                        } else {
+                                            try {
+                                                let resultData = JSON.parse(result.Body.toString('utf-8'));
+        
+                                                const segSize = resultData.results.speaker_labels.segments.length;
+                                                const itemSize = resultData.results.items.length
+                                                const spkNum = resultData.results.speaker_labels.speakers;
+        
+                                                // 결과를 db에 저장하는 쿼리
+                                                const sql = `INSERT INTO contents(job_name, spk_label, start_time, end_time, content) values (?,?,?,?,?)`;
+        
+                                                const statements = new Array();
+                                                const data = new Object();
+                                                data.filePath = `https://voisee.s3.ap-northeast-2.amazonaws.com/${jobName}.m4a`;
+                                                let segments = [];
+        
+                                                let j = 0;
+                                                for (let i = 0; i < segSize; i++) {
+                                                    const stObject = new Object();
+                                                    const startTime = parseFloat(resultData.results.speaker_labels.segments[i].start_time);
+                                                    const endTime = parseFloat(resultData.results.speaker_labels.segments[i].end_time);
+                                                    let speaker = resultData.results.speaker_labels.segments[i].speaker_label;
+                                                    let string = "";
+        
+                                                    for (j; j < itemSize - 1; j++) {
+                                                        const tempString = resultData.results.items[j].alternatives[0].content;
+                                                        const stringType = resultData.results.items[j + 1].type;
+                                                        if (resultData.results.items[j].type === "punctuation") {
+                                                            string += tempString + ' ';
+                                                            continue;
+                                                        }
+                                                        if (parseFloat(resultData.results.items[j].end_time) <= endTime) {
+                                                            string += tempString;
+                                                            if (stringType === "pronunciation") string += ' ';
+                                                        }
+                                                        else break;
+                                                    }
+        
+                                                    if (j == itemSize - 1) string += resultData.results.items[j].alternatives[0].content;
+                                                    segments.push(string);
+        
+                                                    stObject.spk_label = speaker;
+                                                    stObject.start_time = startTime;
+                                                    stObject.end_time = endTime;
+                                                    stObject.content = string;
+        
+                                                    connection.query(sql, [jobName, speaker, startTime, endTime, string], function (err, rows, fields) {
+                                                        if (err) console.log(err);
+                                                    })
+        
+                                                    statements.push(stObject);
+                                                    data.segments = statements;
+                                                }
+                                                console.log(statements);
+                                                console.log(data);
+        
+                                                res
+                                                    .status(OK)
+                                                    .json(data)
+                                                    .end();
+                                            } catch (err) {
+                                                console.log(err);
+                                            }
+                                        }
+                                    });
                                 }
                             });
+                            
                         }
                         // 아직 완료되지 않음
                         else if (data.TranscriptionJob.TranscriptionJobStatus == 'IN_PROGRESS') {
