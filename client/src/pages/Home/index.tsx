@@ -1,17 +1,16 @@
 import React from 'react'
-import Fab from '@material-ui/core/Fab'
-import AddIcon from '@material-ui/icons/Add'
 import RefreshIcon from '@material-ui/icons/Refresh'
 import { makeStyles } from '@material-ui/core/styles'
+import Fab from '@material-ui/core/Fab'
 import Sidebar from 'components/Sidebar'
 import RecordCard from 'components/RecordCard'
 import ChatBox from 'components/ChatBox'
+import AddRecordFormDialog from './AddRecordFormDialog'
 import {
   Container,
   DashboardContainer,
   DashboardItem,
   Row,
-  FilterButton,
 } from './style'
 
 const useStyles = makeStyles((theme) => ({
@@ -44,8 +43,7 @@ const Home: React.FC = () => {
       <DashboardContainer>
         <DashboardItem className={classes.flex3}>
           <Row>
-            <FilterButton>통화녹음</FilterButton>
-            <FilterButton>일반녹음</FilterButton>
+            <h3>녹음파일 목록</h3>
           </Row>
           <div className={classes.recordList}>
             <RecordCard />
@@ -65,9 +63,7 @@ const Home: React.FC = () => {
 
         <DashboardItem className={classes.flex7}>
           <Row className={[classes.right, classes.buttons].join(' ')}>
-            <Fab color="primary" aria-label="add">
-              <AddIcon />
-            </Fab>
+            <AddRecordFormDialog />
             <Fab color="default" aria-label="refresh">
               <RefreshIcon />
             </Fab>
