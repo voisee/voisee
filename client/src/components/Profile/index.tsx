@@ -9,7 +9,9 @@ type ProfileProps = {
 const Profile: React.FC<ProfileProps> = ({ name, position }) => {
   return (
     <Container>
-      <ProfilePhoto />
+      <ProfilePhoto
+        src={'https://2020.feconf.kr/images/backgrounds/img-gradient-5.png'}
+      />
       <Name>{name}</Name>
       <Position>{position}</Position>
     </Container>
