@@ -275,7 +275,10 @@ router.get(
         // an error occurred
         //console.log(data);
         // 완료된 작업 데이터 보내기
-        if (data.TranscriptionJob.TranscriptionJobStatus == "COMPLETED") {
+        const transcriptionJobStatus = data.TranscriptionJob.TranscriptionJobStatus;
+
+        switch(transcriptionJobStatus) {
+          case "COMPLETE": {
           // 작업이 완료되었다면 statements 테이블의 해당 작업 status 컬럼을 1(완료)로 업데이트
           const sql = "UPDATE statements SET status= ? WHERE job_name= ?";
 
@@ -387,29 +390,25 @@ router.get(
               }
             );
           });
-        }
-        // 아직 완료되지 않음
-        else if (
-          data.TranscriptionJob.TranscriptionJobStatus == "IN_PROGRESS"
-        ) {
-          const resPayload = {
-            message: "The job is not yet completed.",
-          };
-          res.status(INTERNAL_SERVER_ERROR).json(resPayload).end();
-        }
-        // 작업이 대기열에 있음
-        else if (data.TranscriptionJob.TranscriptionJobStatus == "QUEUED") {
-          const resPayload = {
-            message: "The job is in the queue.",
-          };
-          res.status(INTERNAL_SERVER_ERROR).json(resPayload).end();
-        }
-        // 작업이 실패함
-        else {
-          const resPayload = {
-            message: "The job is failed.",
-          };
-          res.status(INTERNAL_SERVER_ERROR).json(resPayload).end();
+          }
+          case "IN_PROGRESS": {
+            const resPayload = {
+              message: "The job is not yet completed.",
+            };
+            res.status(INTERNAL_SERVER_ERROR).json(resPayload).end();
+          }
+          case "QUEUED": {
+            const resPayload = {
+              message: "The job is in the queue.",
+            };
+            res.status(INTERNAL_SERVER_ERROR).json(resPayload).end();
+          }
+          default: {
+            const resPayload = {
+              message: "The job is failed.",
+            };
+            res.status(INTERNAL_SERVER_ERROR).json(resPayload).end();
+          }
         }
       });
     });
