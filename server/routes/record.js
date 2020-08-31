@@ -301,13 +301,12 @@ router.get(
                   res.status(BAD_REQUEST).end();
                 }
                 try {
-                  let resultData = JSON.parse(
-                    result.Body.toString("utf-8")
-                  );
+                  let resultData = JSON.parse(result.Body.toString("utf-8"));
 
-                  const segSize =
-                    resultData.results.speaker_labels.segments.length;
-                  const itemSize = resultData.results.items.length;
+                  const { speaker_labels, items } = resultData.results;
+
+                  const segSize = speaker_labels.segments.length;
+                  const itemSize = items.length;
 
                   // 결과를 db에 저장하는 쿼리
                   const sql = `INSERT INTO contents(job_name, spk_label, start_time, end_time, content) values (?,?,?,?,?)`;
@@ -322,44 +321,29 @@ router.get(
                   for (let i = 0; i < segSize; i++) {
                     const stObject = new Object();
                     const startTime = parseFloat(
-                      resultData.results.speaker_labels.segments[i]
-                        .start_time
+                      speaker_labels.segments[i].start_time
                     );
                     const endTime = parseFloat(
-                      resultData.results.speaker_labels.segments[i]
-                        .end_time
+                      speaker_labels.segments[i].end_time
                     );
-                    let speaker =
-                      resultData.results.speaker_labels.segments[i]
-                        .speaker_label;
+                    let speaker = speaker_labels.segments[i].speaker_label;
                     let string = "";
 
                     for (j; j < itemSize - 1; j++) {
-                      const tempString =
-                        resultData.results.items[j].alternatives[0]
-                          .content;
-                      const stringType =
-                        resultData.results.items[j + 1].type;
-                      if (
-                        resultData.results.items[j].type === "punctuation"
-                      ) {
+                      const tempString = items[j].alternatives[0].content;
+                      const stringType = items[j + 1].type;
+                      if (items[j].type === "punctuation") {
                         string += tempString + " ";
                         continue;
                       }
-                      if (
-                        parseFloat(
-                          resultData.results.items[j].end_time
-                        ) <= endTime
-                      ) {
+                      if (parseFloat(items[j].end_time) <= endTime) {
                         string += tempString;
                         if (stringType === "pronunciation") string += " ";
                       } else break;
                     }
 
                     if (j === itemSize - 1)
-                      string +=
-                        resultData.results.items[j].alternatives[0]
-                          .content;
+                      string += items[j].alternatives[0].content;
                     segments.push(string);
 
                     stObject.spk_label = speaker;
@@ -398,10 +382,7 @@ router.get(
                   const resPayload = {
                     message: "JSON parsing error",
                   };
-                  res
-                    .status(INTERNAL_SERVER_ERROR)
-                    .json(resPayload)
-                    .end();
+                  res.status(INTERNAL_SERVER_ERROR).json(resPayload).end();
                 }
               }
             );
