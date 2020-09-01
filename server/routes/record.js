@@ -330,8 +330,8 @@ router.get(
                               }
                             },
                           )
-                          resolve()
                         }
+                        resolve()
                       } catch (err) {
                         console.log(err)
                         const resPayload = {
@@ -343,6 +343,7 @@ router.get(
                     },
                   )
                 })
+                break
               }
               case 'IN_PROGRESS': {
                 const resPayload = {
