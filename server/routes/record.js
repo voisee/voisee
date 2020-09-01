@@ -220,7 +220,7 @@ router.get(
 
     const sql = `SELECT * FROM statements WHERE job_name = (?)`
 
-    connection.query(sql, [jobName], function (err, rows, fields) {
+    connection.query(sql, [jobName], async function (err, rows, fields) {
       if (err) {
         console.log(err)
         const resPayload = {
@@ -329,6 +329,7 @@ router.get(
                             }
                           },
                         )
+                        return true
                       }
                     } catch (err) {
                       console.log(err)
@@ -340,7 +341,6 @@ router.get(
                   },
                 )
               })
-              return true
             }
             case 'IN_PROGRESS': {
               const resPayload = {
@@ -369,9 +369,8 @@ router.get(
         })
       }
 
-      const jobCompleted = await getTranscriptionJob()
-      
-      if (jobCompleted) {
+      await getTranscriptionJob().then((jobCompleted) => {
+        console.log(jobCompleted)
         const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`
         connection.query(sql, [jobName], function (err, result, fields) {
           if (err) {
@@ -398,7 +397,7 @@ router.get(
           recordDetail.segments = statements
           res.status(OK).json(recordDetail).end()
         })
-      }
+      })
     })
   }),
 )
