@@ -230,7 +230,7 @@ router.get(
       }
 
       const getTranscriptionJob = async () => {
-        if (!!rows[0].status) return
+        if (!!rows[0].status) return true
 
         var params = {
           TranscriptionJobName: jobName /* required */,
@@ -244,6 +244,7 @@ router.get(
             }
             // TODO: 알맞은 status code 반환
             res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+            return false
           }
 
           // an error occurred
@@ -339,13 +340,14 @@ router.get(
                   },
                 )
               })
-              break
+              return true
             }
             case 'IN_PROGRESS': {
               const resPayload = {
                 message: 'The job is not yet completed.',
               }
               res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+              return false
               break
             }
             case 'QUEUED': {
@@ -353,6 +355,7 @@ router.get(
                 message: 'The job is in the queue.',
               }
               res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+              return false
               break
             }
             default: {
@@ -360,12 +363,15 @@ router.get(
                 message: 'The job is failed.',
               }
               res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+              return false
             }
           }
         })
       }
 
-      getTranscriptionJob().then(() => {
+      const jobCompleted = await getTranscriptionJob()
+      
+      if (jobCompleted) {
         const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`
         connection.query(sql, [jobName], function (err, result, fields) {
           if (err) {
@@ -392,7 +398,7 @@ router.get(
           recordDetail.segments = statements
           res.status(OK).json(recordDetail).end()
         })
-      })
+      }
     })
   }),
 )
