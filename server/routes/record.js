@@ -228,8 +228,8 @@ router.get(
         }
         res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
       }
-      // 완료되지 않았을 때
-      if (!rows[0].status) {
+
+      const getTranscriptionJob = async () => {
         var params = {
           TranscriptionJobName: jobName /* required */,
         }
@@ -262,19 +262,19 @@ router.get(
                     const resPayload = {
                       message: DoesNotExistError,
                     }
-                    res.status(BAD_REQUEST).json(resPayload).end()
+                    return res.status(BAD_REQUEST).json(resPayload).end()
                   } else {
                     const resPayload = {
                       message: queryError,
                     }
-                    res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+                    return res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
                   }
                 }
                 s3.getObject(
                   { Bucket: 'voisee', Key: `${jobName}.json` },
                   function (err, result) {
                     if (err) {
-                      res.status(BAD_REQUEST).end()
+                      return res.status(BAD_REQUEST).end()
                     }
                     try {
                       let resultData = JSON.parse(result.Body.toString('utf-8'))
@@ -319,7 +319,7 @@ router.get(
                               const resPayload = {
                                 message: queryError,
                               }
-                              res
+                              return res
                                 .status(INTERNAL_SERVER_ERROR)
                                 .json(resPayload)
                                 .end()
@@ -332,7 +332,7 @@ router.get(
                       const resPayload = {
                         message: 'JSON parsing error',
                       }
-                      res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+                      return res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
                     }
                   },
                 )
@@ -362,6 +362,10 @@ router.get(
           }
         })
       }
+
+      // 완료되지 않았을 때
+      if (!rows[0].status) await getTranscriptionJob()
+  
       const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`
       connection.query(sql, [jobName], function (err, result, fields) {
         if (err) {
