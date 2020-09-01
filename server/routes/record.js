@@ -220,7 +220,7 @@ router.get(
 
     const sql = `SELECT * FROM statements WHERE job_name = (?)`
 
-    connection.query(sql, [jobName], async function (err, rows, fields) {
+    connection.query(sql, [jobName], function (err, rows, fields) {
       if (err) {
         console.log(err)
         const resPayload = {
@@ -229,148 +229,150 @@ router.get(
         res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
       }
 
-      const getTranscriptionJob = async () => {
-        if (!!rows[0].status) return true
+      function getTranscriptionJob() {
+        return new Promise(function (resolve, reject) {
+          if (!!rows[0].status) resolve()
 
-        var params = {
-          TranscriptionJobName: jobName /* required */,
-        }
-
-        transcribeservice.getTranscriptionJob(params, function (err, data) {
-          if (err) {
-            console.log(err, err.stack)
-            const resPayload = {
-              message: queryError,
-            }
-            // TODO: 알맞은 status code 반환
-            res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
-            return false
+          var params = {
+            TranscriptionJobName: jobName /* required */,
           }
-
-          // an error occurred
-          //console.log(data);
-          // 완료된 작업 데이터 보내기
-          const transcriptionJobStatus =
-            data.TranscriptionJob.TranscriptionJobStatus
-
-          switch (transcriptionJobStatus) {
-            case 'COMPLETED': {
-              // 작업이 완료되었다면 statements 테이블의 해당 작업 status 컬럼을 1(완료)로 업데이트
-              const sql = 'UPDATE statements SET status= ? WHERE job_name= ?'
-
-              connection.query(sql, [1, jobName], function (err, rows, fields) {
-                if (err) {
-                  console.log(err)
-                  if (!rows.affectedRows) {
-                    const resPayload = {
-                      message: DoesNotExistError,
-                    }
-                    return res.status(BAD_REQUEST).json(resPayload).end()
-                  } else {
-                    const resPayload = {
-                      message: queryError,
-                    }
-                    return res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
-                  }
-                }
-                s3.getObject(
-                  { Bucket: 'voisee', Key: `${jobName}.json` },
-                  function (err, result) {
-                    if (err) {
-                      return res.status(BAD_REQUEST).end()
-                    }
-                    try {
-                      let resultData = JSON.parse(result.Body.toString('utf-8'))
-
-                      const { speaker_labels, items } = resultData.results
-                      const itemSize = items.length
-                      const segment = speaker_labels.segments
-                     
-                      // 결과를 db에 저장하는 쿼리
-                      const sql = `INSERT INTO contents(job_name, spk_label, start_time, end_time, content) values (?,?,?,?,?)`
-
-                      let j = 0
-
-                      for (let index = 0; index < segment.length; index++) {
-                        const startTime = parseFloat(segment[index].start_time)
-                        const endTime = parseFloat(segment[index].end_time)
-                        const speaker = segment[index].speaker_label
-                        let string = ''
-
-                        for (j; j < itemSize - 1; j++) {
-                          const tempString = items[j].alternatives[0].content
-                          const stringType = items[j + 1].type
-                          if (items[j].type === 'punctuation') {
-                            string += tempString + ' '
-                            continue
-                          }
-                          if (parseFloat(items[j].end_time) <= endTime) {
-                            string += tempString
-                            if (stringType === 'pronunciation') string += ' '
-                          } else break
-                        }
-                        if (j == itemSize - 1)
-                          string += items[j].alternatives[0].content
-
-                        // 결과를 db에 저장
-                        connection.query(
-                          sql,
-                          [jobName, speaker, startTime, endTime, string],
-                          function (err, rows, fields) {
-                            if (err) {
-                              console.log(err)
-                              const resPayload = {
-                                message: queryError,
-                              }
-                              return res
-                                .status(INTERNAL_SERVER_ERROR)
-                                .json(resPayload)
-                                .end()
-                            }
-                          },
-                        )
-                        return true
-                      }
-                    } catch (err) {
-                      console.log(err)
+  
+          transcribeservice.getTranscriptionJob(params, function (err, data) {
+            if (err) {
+              console.log(err, err.stack)
+              const resPayload = {
+                message: queryError,
+              }
+              // TODO: 알맞은 status code 반환
+              res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+              reject()
+            }
+  
+            // an error occurred
+            //console.log(data);
+            // 완료된 작업 데이터 보내기
+            const transcriptionJobStatus =
+              data.TranscriptionJob.TranscriptionJobStatus
+  
+            switch (transcriptionJobStatus) {
+              case 'COMPLETED': {
+                // 작업이 완료되었다면 statements 테이블의 해당 작업 status 컬럼을 1(완료)로 업데이트
+                const sql = 'UPDATE statements SET status= ? WHERE job_name= ?'
+  
+                connection.query(sql, [1, jobName], function (err, rows, fields) {
+                  if (err) {
+                    console.log(err)
+                    if (!rows.affectedRows) {
                       const resPayload = {
-                        message: 'JSON parsing error',
+                        message: DoesNotExistError,
+                      }
+                      return res.status(BAD_REQUEST).json(resPayload).end()
+                    } else {
+                      const resPayload = {
+                        message: queryError,
                       }
                       return res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
                     }
-                  },
-                )
-              })
-            }
-            case 'IN_PROGRESS': {
-              const resPayload = {
-                message: 'The job is not yet completed.',
+                  }
+                  s3.getObject(
+                    { Bucket: 'voisee', Key: `${jobName}.json` },
+                    function (err, result) {
+                      if (err) {
+                        return res.status(BAD_REQUEST).end()
+                      }
+                      try {
+                        let resultData = JSON.parse(result.Body.toString('utf-8'))
+  
+                        const { speaker_labels, items } = resultData.results
+                        const itemSize = items.length
+                        const segment = speaker_labels.segments
+                       
+                        // 결과를 db에 저장하는 쿼리
+                        const sql = `INSERT INTO contents(job_name, spk_label, start_time, end_time, content) values (?,?,?,?,?)`
+  
+                        let j = 0
+  
+                        for (let index = 0; index < segment.length; index++) {
+                          const startTime = parseFloat(segment[index].start_time)
+                          const endTime = parseFloat(segment[index].end_time)
+                          const speaker = segment[index].speaker_label
+                          let string = ''
+  
+                          for (j; j < itemSize - 1; j++) {
+                            const tempString = items[j].alternatives[0].content
+                            const stringType = items[j + 1].type
+                            if (items[j].type === 'punctuation') {
+                              string += tempString + ' '
+                              continue
+                            }
+                            if (parseFloat(items[j].end_time) <= endTime) {
+                              string += tempString
+                              if (stringType === 'pronunciation') string += ' '
+                            } else break
+                          }
+                          if (j == itemSize - 1)
+                            string += items[j].alternatives[0].content
+  
+                          // 결과를 db에 저장
+                          connection.query(
+                            sql,
+                            [jobName, speaker, startTime, endTime, string],
+                            function (err, rows, fields) {
+                              if (err) {
+                                console.log(err)
+                                const resPayload = {
+                                  message: queryError,
+                                }
+                                return res
+                                  .status(INTERNAL_SERVER_ERROR)
+                                  .json(resPayload)
+                                  .end()
+                              }
+                            },
+                          )
+                          resolve()
+                        }
+                      } catch (err) {
+                        console.log(err)
+                        const resPayload = {
+                          message: 'JSON parsing error',
+                        }
+                        res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+                        reject()
+                      }
+                    },
+                  )
+                })
               }
-              res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
-              return false
-              break
-            }
-            case 'QUEUED': {
-              const resPayload = {
-                message: 'The job is in the queue.',
+              case 'IN_PROGRESS': {
+                const resPayload = {
+                  message: 'The job is not yet completed.',
+                }
+                res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+                reject()
+                break
               }
-              res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
-              return false
-              break
-            }
-            default: {
-              const resPayload = {
-                message: 'The job is failed.',
+              case 'QUEUED': {
+                const resPayload = {
+                  message: 'The job is in the queue.',
+                }
+                res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+                reject()
+                break
               }
-              res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
-              return false
+              default: {
+                const resPayload = {
+                  message: 'The job is failed.',
+                }
+                res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+                reject()
+              }
             }
-          }
+          })
         })
       }
 
-      await getTranscriptionJob().then((jobCompleted) => {
-        console.log(jobCompleted)
+      getTranscriptionJob().then(() => {
         const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`
         connection.query(sql, [jobName], function (err, result, fields) {
           if (err) {
