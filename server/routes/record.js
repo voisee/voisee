@@ -64,34 +64,65 @@ const upload = multer({
   }),
 })
 
+// TODO: db model 추출하는 함수 모아서 model directory에 관리하기
+const getJobDetail = (jobId) => {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`
+    connection.query(sql, [jobId], function (err, rows, fields) {
+      if (err) {
+        const resPayload = {
+          message: queryError,
+        }
+        reject(resPayload)
+      }
+      resolve(rows.map((row) => ({
+        spk_label: row.spk_label,
+        start_time: row.start_time,
+        end_time: row.end_time,
+        content: row.content,
+        segment_id: row.statement_id,
+      })))
+    })
+  })
+}
+
 // get record list
 router.get(
   '/',
   wrapper(async (req, res, next) => {
     const sql = `SELECT * FROM statements`
-    const recordList = new Array()
-    connection.query(sql, function (err, rows, fields) {
+    connection.query(sql, async function (err, rows, fields) {
       if (err) {
         console.log(err)
         const resPayload = {
           message: queryError,
         }
         res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
-      } else {
-        for (let i = 0; i < rows.length; i++) {
-          const record = new Object()
-          record.id = rows[i].job_id
-          record.name = rows[i].statement_name
-          record.description = rows[i].description
-          record.recordUrl = rows[i].record_uri
-          record.jobName = rows[i].job_name
-          record.categoryId = rows[i].categoryid
-          recordList.push(record)
-        }
-        res.status(OK).json(recordList).end()
       }
+      const records = rows.map((row) => {
+        const {
+          job_id,
+          statement_name,
+          description,
+          record_uri,
+          job_name,
+          categoryid,
+        } = row
+
+        const contents = await getJobDetail(job_name)
+        return {
+          id: job_id,
+          name: statement_name,
+          description,
+          recordUrl: record_uri,
+          jobName: job_name,
+          categoryId: categoryid,
+          contents, 
+        }
+      })
+      res.status(OK).json(records).end()
     })
-  }),
+  })
 )
 
 // 클라이언트에서 보낸 음성파일을 받아 s3에 업로드 후 stt 실행
@@ -129,19 +160,19 @@ router.post(
             res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
           }
         }
-      },
+      }
     )
 
     /*
         // 현재 액세스하는 키와 리전 확인
         AWS.config.getCredentials(function(err){
-            if (err) console.log(err.stack);
+            if (err) console.log(err.stack)
             // credentials not loaded
             else {
-                console.log("Access key: ",  AWS.config.credentials.accessKeyId);
-                console.log("Region: ", AWS.config.region);
+                console.log('Access key: ',  AWS.config.credentials.accessKeyId)
+                console.log('Region: ', AWS.config.region)
             }
-        });  
+        })  
         */
 
     /************음성파일 변환 실행 **************/
@@ -153,8 +184,8 @@ router.post(
         MediaFileUri: fileLocation, // 변환할 음성파일의 uri
       },
       TranscriptionJobName: jobName, // job의 이름 설정
-      //MediaFormat: "mp4", // 음성 파일 형식 지정
-      //MediaSampleRateHertz: "11100", // 샘플링레이트 설정
+      //MediaFormat: 'mp4', // 음성 파일 형식 지정
+      //MediaSampleRateHertz: '11100', // 샘플링레이트 설정
       OutputBucketName: 'voisee', // 변환 결과 파일이 저장될 버킷 이름
       OutputEncryptionKMSKeyId: '8b6d2d3e-5fb6-4183-9494-c694d1ad016b', // KMS
       Settings: {
@@ -209,7 +240,7 @@ router.post(
         }
       }
     })
-  }),
+  })
 )
 
 // 대화명을 받아 완료된 작업 결과를 전송
@@ -236,7 +267,7 @@ router.get(
           var params = {
             TranscriptionJobName: jobName /* required */,
           }
-  
+
           transcribeservice.getTranscriptionJob(params, function (err, data) {
             if (err) {
               console.log(err, err.stack)
@@ -247,19 +278,23 @@ router.get(
               res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
               reject()
             }
-  
+
             // an error occurred
-            //console.log(data);
+            //console.log(data)
             // 완료된 작업 데이터 보내기
             const transcriptionJobStatus =
               data.TranscriptionJob.TranscriptionJobStatus
-  
+
             switch (transcriptionJobStatus) {
               case 'COMPLETED': {
                 // 작업이 완료되었다면 statements 테이블의 해당 작업 status 컬럼을 1(완료)로 업데이트
                 const sql = 'UPDATE statements SET status= ? WHERE job_name= ?'
-  
-                connection.query(sql, [1, jobName], function (err, rows, fields) {
+
+                connection.query(sql, [1, jobName], function (
+                  err,
+                  rows,
+                  fields
+                ) {
                   if (err) {
                     console.log(err)
                     if (!rows.affectedRows) {
@@ -271,7 +306,10 @@ router.get(
                       const resPayload = {
                         message: queryError,
                       }
-                      return res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+                      return res
+                        .status(INTERNAL_SERVER_ERROR)
+                        .json(resPayload)
+                        .end()
                     }
                   }
                   s3.getObject(
@@ -281,23 +319,27 @@ router.get(
                         return res.status(BAD_REQUEST).end()
                       }
                       try {
-                        let resultData = JSON.parse(result.Body.toString('utf-8'))
-  
+                        let resultData = JSON.parse(
+                          result.Body.toString('utf-8')
+                        )
+
                         const { speaker_labels, items } = resultData.results
                         const itemSize = items.length
                         const segment = speaker_labels.segments
-                       
+
                         // 결과를 db에 저장하는 쿼리
                         const sql = `INSERT INTO contents(job_name, spk_label, start_time, end_time, content) values (?,?,?,?,?)`
-  
+
                         let j = 0
-  
+
                         for (let index = 0; index < segment.length; index++) {
-                          const startTime = parseFloat(segment[index].start_time)
+                          const startTime = parseFloat(
+                            segment[index].start_time
+                          )
                           const endTime = parseFloat(segment[index].end_time)
                           const speaker = segment[index].speaker_label
                           let string = ''
-  
+
                           for (j; j < itemSize - 1; j++) {
                             const tempString = items[j].alternatives[0].content
                             const stringType = items[j + 1].type
@@ -312,7 +354,7 @@ router.get(
                           }
                           if (j == itemSize - 1)
                             string += items[j].alternatives[0].content
-  
+
                           // 결과를 db에 저장
                           connection.query(
                             sql,
@@ -328,7 +370,7 @@ router.get(
                                   .json(resPayload)
                                   .end()
                               }
-                            },
+                            }
                           )
                         }
                         resolve()
@@ -337,10 +379,13 @@ router.get(
                         const resPayload = {
                           message: 'JSON parsing error',
                         }
-                        res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+                        res
+                          .status(INTERNAL_SERVER_ERROR)
+                          .json(resPayload)
+                          .end()
                         reject()
                       }
-                    },
+                    }
                   )
                 })
                 break
@@ -383,11 +428,11 @@ router.get(
             }
             res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
           }
-          console.log(result);
+          console.log(result)
           const recordDetail = new Object()
           recordDetail.recordUrl = rows[0].record_url
           const statements = new Array()
-  
+
           for (let i = 0; i < result.length; i++) {
             const stObject = new Object()
             stObject.spk_label = result[i].spk_label
@@ -402,7 +447,7 @@ router.get(
         })
       })
     })
-  }),
+  })
 )
 
 // 대화 수정
@@ -417,7 +462,7 @@ router.put(
     connection.query(sql, [newStatement, segmentId], function (
       err,
       rows,
-      fields,
+      fields
     ) {
       if (err) {
         console.log(err)
@@ -432,7 +477,7 @@ router.put(
         res.status(OK).json(resPayload).end()
       }
     })
-  }),
+  })
 )
 
 // 레코드 삭제
@@ -459,7 +504,7 @@ router.delete(
         }
       }
     })
-  }),
+  })
 )
 
 module.exports = router
