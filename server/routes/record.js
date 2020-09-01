@@ -230,6 +230,8 @@ router.get(
       }
 
       const getTranscriptionJob = async () => {
+        if (!!rows[0].status) return
+
         var params = {
           TranscriptionJobName: jobName /* required */,
         }
@@ -363,34 +365,33 @@ router.get(
         })
       }
 
-      // 완료되지 않았을 때
-      if (!rows[0].status) await getTranscriptionJob()
-  
-      const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`
-      connection.query(sql, [jobName], function (err, result, fields) {
-        if (err) {
-          console.log(err)
-          const resPayload = {
-            message: queryError,
+      getTranscriptionJob().then(() => {
+        const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`
+        connection.query(sql, [jobName], function (err, result, fields) {
+          if (err) {
+            console.log(err)
+            const resPayload = {
+              message: queryError,
+            }
+            res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
           }
-          res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
-        }
-        console.log(result);
-        const recordDetail = new Object()
-        recordDetail.recordUrl = rows[0].record_url
-        const statements = new Array()
-
-        for (let i = 0; i < result.length; i++) {
-          const stObject = new Object()
-          stObject.spk_label = result[i].spk_label
-          stObject.start_time = result[i].start_time
-          stObject.end_time = result[i].end_time
-          stObject.content = result[i].content
-          stObject.segment_id = result[i].statement_id
-          statements.push(stObject)
-        }
-        recordDetail.segments = statements
-        res.status(OK).json(recordDetail).end()
+          console.log(result);
+          const recordDetail = new Object()
+          recordDetail.recordUrl = rows[0].record_url
+          const statements = new Array()
+  
+          for (let i = 0; i < result.length; i++) {
+            const stObject = new Object()
+            stObject.spk_label = result[i].spk_label
+            stObject.start_time = result[i].start_time
+            stObject.end_time = result[i].end_time
+            stObject.content = result[i].content
+            stObject.segment_id = result[i].statement_id
+            statements.push(stObject)
+          }
+          recordDetail.segments = statements
+          res.status(OK).json(recordDetail).end()
+        })
       })
     })
   }),
