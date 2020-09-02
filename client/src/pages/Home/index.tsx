@@ -1,17 +1,15 @@
-import React from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import RefreshIcon from '@material-ui/icons/Refresh'
 import { makeStyles } from '@material-ui/core/styles'
 import Fab from '@material-ui/core/Fab'
+
+import { RootProps } from 'model/type'
+import { getRootProperties } from 'network'
 import Sidebar from 'components/Sidebar'
 import RecordCard from 'components/RecordCard'
 import ChatBox from 'components/ChatBox'
 import AddRecordFormDialog from './AddRecordFormDialog'
-import {
-  Container,
-  DashboardContainer,
-  DashboardItem,
-  Row,
-} from './style'
+import { Container, DashboardContainer, DashboardItem, Row } from './style'
 
 const useStyles = makeStyles((theme) => ({
   flex3: {
@@ -31,12 +29,37 @@ const useStyles = makeStyles((theme) => ({
     },
   },
   recordList: {
+    paddingRight: 30,
     overflow: 'scroll',
   },
 }))
 
 const Home: React.FC = () => {
   const classes = useStyles()
+  const [notes, setNotes] = useState<RootProps[]>([])
+  const [selectedNoteIndex, setSelectedNoteIndex] = useState<number>(0)
+  const selectedNoteId = useMemo(
+    () => notes[selectedNoteIndex]?.id,
+    [notes, selectedNoteIndex],
+  )
+
+  useEffect(() => {
+    getRootProperties().then((response) => {
+      const { data } = response
+      console.log(data)
+      setNotes(data)
+    })
+  }, [])
+
+  useEffect(() => {
+    console.log(selectedNoteId)
+  }, [selectedNoteId])
+
+  const handleSelectNote = (id: number) => {
+    setSelectedNoteIndex(notes.findIndex((note) => note.id === id))
+  }
+
+  console.log(notes)
   return (
     <Container>
       <Sidebar />
@@ -46,18 +69,16 @@ const Home: React.FC = () => {
             <h3>녹음파일 목록</h3>
           </Row>
           <div className={classes.recordList}>
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
-            <RecordCard />
+            {notes.map((note) => (
+              <RecordCard
+                key={note.id}
+                id={note.id}
+                active={note.id === selectedNoteId}
+                title={note.name}
+                desc={note.description}
+                onClick={handleSelectNote}
+              />
+            ))}
           </div>
         </DashboardItem>
 
@@ -68,7 +89,7 @@ const Home: React.FC = () => {
               <RefreshIcon />
             </Fab>
           </Row>
-          <ChatBox />
+          <ChatBox segments={notes[selectedNoteIndex]?.contents} />
         </DashboardItem>
       </DashboardContainer>
     </Container>

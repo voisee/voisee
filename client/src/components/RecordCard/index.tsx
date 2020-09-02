@@ -1,18 +1,31 @@
 import React from 'react'
+import { makeStyles } from '@material-ui/core/styles'
 import { Container, Title, Desc, Date } from './style'
 
-const RecordCard: React.FC = () => {
+const useStyles = makeStyles(() => ({
+  active: {
+    backgroundColor: '#eeeeff !important',
+  },
+}));
+
+interface Props {
+  id: number
+  title: string
+  desc: string
+  active: boolean
+  onClick: (id: number) => void
+}
+
+const RecordCard: React.FC<Props> = ({ id, title, desc, active, onClick }) => {
+  const classes = useStyles()
+
   return (
-    <Container>
+    <Container className={active ? classes.active : ''} onClick={() => onClick(id)}>
       <Title>
-        VoiseeLab
-        <Date>
-          5월 4일
-        </Date>
+        {title}
+        <Date>9월 2일</Date>
       </Title>
-      <Desc>
-        인프라 설정 업무 설명
-      </Desc>
+      <Desc>{desc}</Desc>
     </Container>
   )
 }

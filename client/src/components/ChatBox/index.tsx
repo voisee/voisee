@@ -5,6 +5,8 @@ import Header from './Header'
 import Chat from './Chat'
 import Footer from './Footer'
 
+import { Segment } from 'model/type'
+
 const useStyles = makeStyles(() => ({
   wrapper: {
     height: '100%',
@@ -15,26 +17,25 @@ const useStyles = makeStyles(() => ({
   },
   chatBox: {
     overflow: 'scroll',
-  }
-}));
+  },
+}))
 
-const ChatBox: React.FC = () => {
-  const classes = useStyles();
+interface Props {
+  segments: Segment[]
+}
+
+const ChatBox: React.FC<Props> = ({ segments }) => {
+  const classes = useStyles()
 
   return (
     <div className={classes.wrapper}>
       <Header />
       <div className={classes.chatBox}>
-        <Chat author={false} />
-        <Chat author={true} />
-        <Chat author={false} />
-        <Chat author={true} />
-        <Chat author={false} />
-        <Chat author={false} />
-        <Chat author={false} />
-        <Chat author={false} />
-        <Chat author={false} />
-        <Chat author={false} />
+        {segments && segments.map((segment) => {
+          const { id, speaker, content } = segment
+          const me = speaker === 'spk_0'
+          return <Chat key={id} id={id} speaker={me} content={content} />
+        })}
       </div>
       <Footer />
     </div>

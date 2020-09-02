@@ -1,5 +1,6 @@
 import React from 'react'
 import { makeStyles } from '@material-ui/core/styles'
+import { Segment } from 'model/type'
 
 const useStyles = makeStyles(() => ({
   wrapper: {
@@ -7,7 +8,7 @@ const useStyles = makeStyles(() => ({
     marginBottom: 20,
   },
   container: {
-    padding: '10px 20px',
+    padding: '8px 20px',
     borderRadius: 16,
     backgroundColor: '#f0f0f0',
     maxWidth: 360,
@@ -15,7 +16,7 @@ const useStyles = makeStyles(() => ({
   content: {
     fontSize: 14,
   },
-  author: {
+  speaker: {
     backgroundColor: '#2171dc',
     color: '#ffffff',
   },
@@ -24,24 +25,22 @@ const useStyles = makeStyles(() => ({
   }
 }));
 
-interface ChatProps {
-  author: boolean
-}
+type Props = Partial<Omit<Segment, 'speaker'> & { speaker: boolean }>
 
-const Chat: React.FC<ChatProps> = ({ author }) => {
+const Chat: React.FC<Props> = ({ speaker, content }) => {
   const classes = useStyles();
 
   return (
     <div className={[
       classes.wrapper,
-      author && classes.alignAuthor
+      speaker && classes.alignAuthor
     ].join(' ')}>
       <div className={[
         classes.container,
-        author && classes.author
+        speaker && classes.speaker
       ].join(' ')}>
         <p className={classes.content}>
-          Hello Sophie! I'm Jelly. Today's your teacher. Nice to meet you.
+          {content}
         </p>
       </div>
     </div>
