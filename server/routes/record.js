@@ -122,7 +122,7 @@ router.get(
           contents, 
         }
       }))
-      console.log(records)
+      
       res.status(OK).json(records).end()
     })
   })

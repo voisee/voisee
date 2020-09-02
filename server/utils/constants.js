@@ -4,3 +4,4 @@ export const duplicateError = `That value is duplicated.`;
 export const queryError = `Database query error`;
 export const transcribeError = `The transcribe job is failed.`;
 export const s3StoragePath = `https://voisee.s3.ap-northeast-2.amazonaws.com/`;
+export const insertSuccess = `Successfully inserted.`
