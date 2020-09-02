@@ -30,6 +30,8 @@ const AWS = require('aws-sdk')
 // Update region
 AWS.config.update({ region: 'ap-northeast-2' })
 
+
+
 // s3 객체 생성
 const s3 = new AWS.S3()
 
@@ -99,7 +101,7 @@ router.get(
         }
         res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
       }
-      const records = rows.map((row) => {
+      const records = await Promise.all(rows.map(async (row) => {
         const {
           job_id,
           statement_name,
@@ -119,7 +121,8 @@ router.get(
           categoryId: categoryid,
           contents, 
         }
-      })
+      }))
+      console.log(records)
       res.status(OK).json(records).end()
     })
   })
@@ -136,7 +139,7 @@ router.post(
     const language = req.body.language
     const description = req.body.description
     const jobName = job.name
-
+    console.log(statementName, categoryId, language, description, jobName);
     // s3에 업로드한 파일의 경로
     const fileLocation = req.file.location
 
