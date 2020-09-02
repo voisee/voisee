@@ -4,12 +4,11 @@ services:
   db:
     image: mariadb
     restart: always
-    ports:
-      - '32769:3306'
     volumes:
       - ./migrations/:/docker-entrypoint-initdb.d/:ro
+    env_file: .env
     environment:
-      MYSQL_ROOT_PASSWORD: 'changeme' # init setting.
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
 
   app:
     build: .
@@ -19,5 +18,9 @@ services:
       - db
     ports:  # debugging purpose only, don't expose on production
       - '80:80'
+    env_file: .env
     environment:
-      DB_PASSWORD: 'changeme' # init setting.
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ap-northeast-2
