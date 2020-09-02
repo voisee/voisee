@@ -89,7 +89,7 @@ const Home: React.FC = () => {
               <RefreshIcon />
             </Fab>
           </Row>
-          <ChatBox segments={notes[selectedNoteIndex]?.contents} />
+          <ChatBox note={notes[selectedNoteIndex]} />
         </DashboardItem>
       </DashboardContainer>
     </Container>
