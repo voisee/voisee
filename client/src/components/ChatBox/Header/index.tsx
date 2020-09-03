@@ -18,16 +18,21 @@ const useStyles = makeStyles(() => ({
   }
 }));
 
-const Header: React.FC = () => {
+interface Props {
+  title: string
+  desc: string
+}
+
+const Header: React.FC<Props> = ({ title, desc }) => {
   const classes = useStyles();
 
   return (
     <div className={classes.container}>
       <div className={classes.title}>
-        Jelly
+        {title}
       </div>
       <div className={classes.desc}>
-        민병철유폰 영어회화
+        {desc}
       </div>
     </div>
   )

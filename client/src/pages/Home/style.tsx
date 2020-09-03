@@ -26,13 +26,8 @@ export const DashboardItem = styled.div`
 export const Row = styled.div`
   display: flex;
 
-  & Fab {
-    background-color: #eeeeff;
+  &>h3 {
+    font-size: 24px;
+    font-weight: 400;
   }
-`
-export const FilterButton = styled.h3`
-  font-size: 24px;
-  margin-right: 28px;
-  cursor: pointer;
-  font-weight: 400;
 `

@@ -8,11 +8,11 @@ export const Container = styled.div`
   align-items: center;
 `
 
-export const ProfilePhoto = styled.div`
+export const ProfilePhoto = styled.img`
   width: 90px;
   height: 90px;
+  object-fit: cover;
   border-radius: 45px;
-  background-image: linear-gradient(120deg, #FF8C53 0%, #FA3D44 100%);
   margin-bottom: 20px;
 `
 

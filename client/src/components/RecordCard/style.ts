@@ -29,6 +29,7 @@ export const active = styled.div`
 export const Title = styled.div`
   color: #2a2a2a;
   font-size: 16px;
+  font-weight: 500;
   margin-bottom: 5px;
   display: flex;
   flex-direction: row;
