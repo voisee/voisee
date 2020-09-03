@@ -3,7 +3,6 @@ export interface RootProps {
   name: string;
   description: string;
   jobName: string;
-  status: number;
   categoryId: number;
   contents: Segment[];
 }

@@ -4,7 +4,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import Fab from '@material-ui/core/Fab'
 
 import { RootProps } from 'model/type'
-import { getRootProperties } from 'network'
+import { getRootProperties, refreshNote } from 'network'
 import Sidebar from 'components/Sidebar'
 import RecordCard from 'components/RecordCard'
 import ChatBox from 'components/ChatBox'
@@ -47,18 +47,28 @@ const Home: React.FC = () => {
     getRootProperties().then((response) => {
       const { data } = response
       console.log(data)
-      setNotes(data)
+      setNotes(data.sort((a, b) => b.id - a.id))
     })
   }, [])
 
   const handleSelectNote = (id: number) => {
-    setSelectedNoteIndex(notes.findIndex((note) => note.id === id))
+    const newSelectedNoteIndex = notes.findIndex((note) => note.id === id)
+    const selectedNote = notes[newSelectedNoteIndex]
+    setSelectedNoteIndex(newSelectedNoteIndex)
+
+    if(selectedNote?.contents?.length <= 0) {
+      refreshNote(selectedNote.jobName).then((response) => {
+        const newNotes = notes
+        newNotes[newSelectedNoteIndex].contents = response.data.contents
+        setNotes(newNotes)
+      })
+    }
   }
 
   const handleCreateNote = (note: RootProps) => {
     const newNotes = [
-      ...notes,
       note,
+      ...notes,
     ]
     setNotes(newNotes)
   }

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { makeStyles } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
@@ -10,6 +10,11 @@ import DialogActions from '@material-ui/core/DialogActions'
 import DialogContent from '@material-ui/core/DialogContent'
 import DialogContentText from '@material-ui/core/DialogContentText'
 import DialogTitle from '@material-ui/core/DialogTitle'
+import InputLabel from '@material-ui/core/InputLabel';
+import MenuItem from '@material-ui/core/MenuItem';
+import FormHelperText from '@material-ui/core/FormHelperText';
+import FormControl from '@material-ui/core/FormControl';
+import Select from '@material-ui/core/Select';
 import { createNote, refreshNote } from 'network'
 import { RootProps, createNoteResponse } from 'model/type'
 
@@ -25,6 +30,9 @@ const useStyles = makeStyles(() => ({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  selectInput: {
+    margin: '24px 0',
+  }
 }))
 
 interface Props {
@@ -34,7 +42,12 @@ interface Props {
 const FormDialog: React.FC<Props> = ({ onSuccess }) => {
   const { handleSubmit, register } = useForm()
   const classes = useStyles()
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = useState<boolean>(false)
+  const [language, setLanguage] = useState<string>('ko-KR')
+
+  const handleLanguageChange = (event: any) => {
+    setLanguage(event.target.value);
+  };
 
   const handleClickOpen = () => {
     setOpen(true)
@@ -50,7 +63,7 @@ const FormDialog: React.FC<Props> = ({ onSuccess }) => {
     formData.append('mediaFile', file[0])
     formData.append('statement_name', name)
     formData.append('categoryid', '2')
-    formData.append('language', 'ko-KR')
+    formData.append('language', language)
     formData.append('description', description)
 
     createNote(formData).then((res: any) => {
@@ -97,6 +110,18 @@ const FormDialog: React.FC<Props> = ({ onSuccess }) => {
               required
               fullWidth
             />
+            <Select
+              name="language"
+              className={classes.selectInput}
+              inputRef={register()}
+              value={language}
+              onChange={handleLanguageChange}
+              required
+              fullWidth
+            >
+              <MenuItem value={'ko-KR'}>한국어</MenuItem>
+              <MenuItem value={'en-US'}>영어</MenuItem>
+            </Select>
             <div className={classes.fileInput}>
               <input type="file" name="file" ref={register()} required />
             </div>
