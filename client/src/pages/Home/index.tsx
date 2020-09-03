@@ -51,15 +51,18 @@ const Home: React.FC = () => {
     })
   }, [])
 
-  useEffect(() => {
-    console.log(selectedNoteId)
-  }, [selectedNoteId])
-
   const handleSelectNote = (id: number) => {
     setSelectedNoteIndex(notes.findIndex((note) => note.id === id))
   }
 
-  console.log(notes)
+  const handleCreateNote = (note: RootProps) => {
+    const newNotes = [
+      ...notes,
+      note,
+    ]
+    setNotes(newNotes)
+  }
+
   return (
     <Container>
       <Sidebar />
@@ -84,7 +87,7 @@ const Home: React.FC = () => {
 
         <DashboardItem className={classes.flex7}>
           <Row className={[classes.right, classes.buttons].join(' ')}>
-            <AddRecordFormDialog />
+            <AddRecordFormDialog onSuccess={handleCreateNote} />
             <Fab color="default" aria-label="refresh">
               <RefreshIcon />
             </Fab>

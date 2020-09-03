@@ -3,6 +3,7 @@ export interface RootProps {
   name: string;
   description: string;
   jobName: string;
+  status: number;
   categoryId: number;
   contents: Segment[];
 }
@@ -13,4 +14,13 @@ export interface Segment {
   startOffset: number;
   endOffset: number;
   content: string;
+}
+
+export interface createNoteResponse {
+  id: string;
+  name: string;
+  description: string;
+  recordUrl: string;
+  jobName: string;
+  categoryId: number;
 }
