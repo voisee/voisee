@@ -7,7 +7,7 @@ const Sidebar: React.FC = () => {
   return (
     <Container>
       <div>
-        <Profile name="김아무개" position={sampleEmail} />
+        <Profile name="김미나" position={sampleEmail} />
         <Navigator>
           <NavTitle>Category</NavTitle>
           <SidebarMenu>

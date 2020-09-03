@@ -4,6 +4,7 @@ export interface RootProps {
   description: string;
   jobName: string;
   categoryId: number;
+  recordUrl: string;
   contents: Segment[];
 }
 

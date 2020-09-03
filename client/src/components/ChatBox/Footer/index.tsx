@@ -1,7 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { makeStyles } from '@material-ui/core/styles'
+import ReactPlayer from 'react-player'
 
-import SendIcon from '@material-ui/icons/Send'
+import Play from '@material-ui/icons/PlayArrow'
+import Pause from '@material-ui/icons/Pause'
 
 const useStyles = makeStyles(() => ({
   container: {
@@ -11,14 +13,14 @@ const useStyles = makeStyles(() => ({
     boxShadow: '0 0 rgba(143,143,143,0.5)',
     display: 'flex',
     flexDirection: 'row',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
   content: {
     fontSize: 12,
     color: '#aaaaaa',
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   blue: {
     color: '#7a7aff',
@@ -26,20 +28,40 @@ const useStyles = makeStyles(() => ({
     '&:hover': {
       color: '#3a3aff',
     },
-  }
-}));
+  },
+  player: {
+    '&>div': {
+      width: '50% !important',
+      height: '100% !important',
+    },
+  },
+}))
 
-const Footer: React.FC = () => {
-  const classes = useStyles();
+interface Props {
+  recordUrl?: string
+}
+
+const Footer: React.FC<Props> = ({ recordUrl }) => {
+  const classes = useStyles()
+  const [playing, setPlaying] = useState<boolean>(false)
+
+  const togglePlaying = () => {
+    setPlaying((prev) => !prev)
+  }
 
   return (
     <div className={classes.container}>
-      <div className={classes.content}>
-        메모 추가하기
+      <div className={classes.content}>녹음파일 재생</div>
+      <div className={classes.player}>
+        <ReactPlayer url={recordUrl} playing={playing} />
       </div>
-      <SendIcon className={classes.blue} />
+      {playing ? (
+        <Pause className={classes.blue} onClick={togglePlaying} />
+      ) : (
+        <Play className={classes.blue} onClick={togglePlaying} />
+      )}
     </div>
   )
 }
 
-export default Footer;
+export default Footer

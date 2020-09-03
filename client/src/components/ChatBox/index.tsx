@@ -42,12 +42,12 @@ const ChatBox: React.FC<Props> = ({ note }) => {
         <p>음성파일을 시각화하는중입니다.</p>
       </div>
     ),
-    [],
+    [classes.alertContainer],
   )
 
   useEffect(() => {
     console.log(note?.name, note?.contents?.length, isLoaded)
-  }, [note])
+  }, [note, isLoaded])
 
   return (
     <div className={classes.wrapper}>
@@ -61,7 +61,7 @@ const ChatBox: React.FC<Props> = ({ note }) => {
             })
           : renderPendingSpinner}
       </div>
-      <Footer />
+      <Footer recordUrl={note?.recordUrl} />
     </div>
   )
 }
