@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="115d2240-45a3-454c-925b-19281a4e8536" name="voisee">
+        <fileTransfer rootFolder="/home/ubuntu/voisee/server" accessType="SFTP" host="3.34.92.53" port="22" sshConfigId="cb6d02de-d57c-4a8a-8d89-2a469acdafa8" sshConfig="ubuntu@3.34.92.53:22 key" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
