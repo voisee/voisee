@@ -15,6 +15,7 @@ import {
 } from '../utils/constants'
 import { mysql_dbc } from '../migrations/db_con'
 
+const { PythonShell } = require('python-shell');
 const router = Router()
 const multer = require('multer')
 const path = require('path')
@@ -87,6 +88,75 @@ const getJobDetail = (jobId) => {
     })
   })
 }
+function getSentiment(content) {
+  return new Promise(function (resolve, reject) {
+    let options = {
+      mode: 'text',
+      pythonPath: '',
+      scriptPath: '/Users/minjae/Documents/project/voisee_home/voisee/server/utils',
+      args: [content],
+      encoding: 'utf8',
+    }
+    PythonShell.run('sentiment_analysis.py', options, function(err, result){
+      if (err) {
+        const resPayload = {
+          message: queryError,
+        }
+        reject(resPayload)
+      }
+      resolve(result)
+    })
+  })
+}
+// 감정분석 요청
+router.get(
+  '/sentiment/:segmentId',
+  wrapper(async (req, res, next) => {
+    const segmentId = req.params.segmentId
+
+    const sql = `SELECT * FROM contents WHERE statement_id = ?`
+
+    connection.query(sql, [segmentId], async function (
+      err,
+      rows,
+      fields
+    ) {
+      if (err) {
+        console.log(err)
+        const resPayload = {
+          message: queryError,
+        }
+        res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+      } else {
+        if(!rows[0].sentiment){
+          const result = await getSentiment(rows[0].content)
+          const sentiment_sql = `UPDATE contents SET sentiment = ?, percentage = ? WHERE statement_id = ?`
+          connection.query(sentiment_sql, [result[0], parseFloat(result[1]), segmentId], function(err, data, fields){
+            if (err) {
+              console.log(err)
+              const resPayload = {
+                message: queryError,
+              }
+              res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
+            }
+            const resPayload = {
+              sentiment: result[0],
+              percentage: parseFloat(result[1])
+            }
+            res.status(OK).json(resPayload).end()
+          })
+        } else{
+          const resPayload = {
+            sentiment: rows[0].sentiment,
+            percentage: rows[0].percentage
+          }
+          res.status(OK).json(resPayload).end()
+        }
+      }
+    })
+    
+  })
+)
 
 // get record list
 router.get(
@@ -190,11 +260,12 @@ router.post(
       //MediaFormat: 'mp4', // 음성 파일 형식 지정
       //MediaSampleRateHertz: '11100', // 샘플링레이트 설정
       OutputBucketName: 'voisee', // 변환 결과 파일이 저장될 버킷 이름
-      OutputEncryptionKMSKeyId: '8b6d2d3e-5fb6-4183-9494-c694d1ad016b', // KMS
+      //OutputEncryptionKMSKeyId: '8b6d2d3e-5fb6-4183-9494-c694d1ad016b', // KMS
       Settings: {
         ChannelIdentification: false,
         MaxSpeakerLabels: '2', // 최대 발화자 수
-        ShowAlternatives: false, // alternative 보여줄 것인가
+        MaxAlternatives: 5, // alternatives 최대 개수
+        ShowAlternatives: true, // alternative 보여줄 것인가
         ShowSpeakerLabels: true, // speaker를 구분해서 라벨 보여줄 것인가
       },
     }
@@ -245,6 +316,8 @@ router.post(
     })
   })
 )
+
+
 
 // 대화명을 받아 완료된 작업 결과를 전송
 router.get(
@@ -317,8 +390,9 @@ router.get(
                   }
                   s3.getObject(
                     { Bucket: 'voisee', Key: `${jobName}.json` },
-                    function (err, result) {
+                    async function (err, result) {
                       if (err) {
+                        console.log(err)
                         return res.status(BAD_REQUEST).end()
                       }
                       try {
@@ -423,7 +497,7 @@ router.get(
 
       getTranscriptionJob().then(() => {
         const sql = `SELECT * FROM contents WHERE job_name = (?) ORDER BY start_time`
-        connection.query(sql, [jobName], function (err, result, fields) {
+        connection.query(sql, [jobName], async function (err, result, fields) {
           if (err) {
             console.log(err)
             const resPayload = {
@@ -435,6 +509,8 @@ router.get(
           const recordDetail = new Object()
           recordDetail.recordUrl = rows[0].record_url
           const statements = new Array()
+
+          
 
           for (let i = 0; i < result.length; i++) {
             const stObject = new Object()

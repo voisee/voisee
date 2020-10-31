@@ -142,11 +142,11 @@ function getAnswers(targetId) {
     })
   })
 }
-function getRecord(jobName){
-  return new Promise(async function (resolve, reject){
+function getRecord(jobName) {
+  return new Promise(async function (resolve, reject) {
     const recordSql = `SELECT * FROM epidemic_statements WHERE job_name = ?`
     const contents = await getContents(jobName)
-    connection.query(recordSql, [jobName], function(err, rows, fields){
+    connection.query(recordSql, [jobName], function (err, rows, fields) {
       if (err) {
         console.log(err)
         const resPayload = {
@@ -154,19 +154,21 @@ function getRecord(jobName){
         }
         reject(resPayload)
       }
-      resolve(rows.map((row) => ({
-        jobName: row.job_name,
-        recordUrl: row.record_url,
-        status: row.status,
-        contents: contents
-      })))
+      resolve(
+        rows.map((row) => ({
+          jobName: row.job_name,
+          recordUrl: row.record_url,
+          status: row.status,
+          contents: contents,
+        })),
+      )
     })
-  })  
+  })
 }
-function getJobName(targetId){
-  return new Promise(async function(resolve, reject){
+function getJobName(targetId) {
+  return new Promise(async function (resolve, reject) {
     const jobSql = `SELECT * FROM epidemic_statements WHERE target_id = ?`
-    connection.query(jobSql, [targetId], function(err, rows, fields){
+    connection.query(jobSql, [targetId], function (err, rows, fields) {
       if (err) {
         console.log(err)
         const resPayload = {
@@ -179,51 +181,52 @@ function getJobName(targetId){
   })
 }
 
-function getTarget(investmentId){
+function getTarget(investmentId) {
   return new Promise(async function (resolve, reject) {
     let targets = new Array()
     const targetSql = `SELECT * FROM targets WHERE investment_id = ?`
-    connection.query(
-      targetSql,
-      [investmentId],
-      async function (err, targetRows, fields) {
-        if (err) {
-          console.log(err)
-          const resPayload = {
-            message: queryError,
-          }
-          reject(resPayload)
+    connection.query(targetSql, [investmentId], async function (
+      err,
+      targetRows,
+      fields,
+    ) {
+      if (err) {
+        console.log(err)
+        const resPayload = {
+          message: queryError,
         }
-        for (
-          let targetIndex = 0;
-          targetIndex < targetRows.length;
-          targetIndex++
-        ) {
-          let eachTarget = new Object()
+        reject(resPayload)
+      }
+      for (
+        let targetIndex = 0;
+        targetIndex < targetRows.length;
+        targetIndex++
+      ) {
+        let eachTarget = new Object()
 
-          eachTarget.id = targetRows[targetIndex].target_id
-          eachTarget.name = targetRows[targetIndex].target_name
-          eachTarget.phone = targetRows[targetIndex].target_phone
-          eachTarget.group = targetRows[targetIndex].target_group
-          eachTarget.status = targetRows[targetIndex].status
-          eachTarget.aggressive = targetRows[targetIndex].aggressive
-          const jobName = await getJobName(targetRows[targetIndex].target_id)
-          const record = await getRecord(jobName)
-          const answers = await getAnswers(targetRows[targetIndex].target_id)
-          eachTarget.record = record
-          eachTarget.answers = answers
-          targets.push(eachTarget)
-        }
-        resolve(targets)
-      })
+        eachTarget.id = targetRows[targetIndex].target_id
+        eachTarget.name = targetRows[targetIndex].target_name
+        eachTarget.phone = targetRows[targetIndex].target_phone
+        eachTarget.group = targetRows[targetIndex].target_group
+        eachTarget.status = targetRows[targetIndex].status
+        eachTarget.aggressive = targetRows[targetIndex].aggressive
+        const jobName = await getJobName(targetRows[targetIndex].target_id)
+        const record = await getRecord(jobName)
+        const answers = await getAnswers(targetRows[targetIndex].target_id)
+        eachTarget.record = record
+        eachTarget.answers = answers
+        targets.push(eachTarget)
+      }
+      resolve(targets)
+    })
   })
 }
 
-function getTemplate(investmentId){
-  return new Promise(async function(resolve, reject){
+function getTemplate(investmentId) {
+  return new Promise(async function (resolve, reject) {
     let template = new Object()
     const sql = `SELECT * FROM template WHERE investment_id = ?`
-    connection.query(sql, [investmentId], function(err, rows, fields){
+    connection.query(sql, [investmentId], function (err, rows, fields) {
       if (err) {
         console.log(err)
         const resPayload = {
@@ -234,7 +237,11 @@ function getTemplate(investmentId){
       template.id = rows[0].template_id
       template.title = rows[0].template_title
       const questionSql = `SELECT * FROM questions WHERE template_id =?`
-      connection.query(questionSql, [rows[0].template_id], async function(err, questionRows, fields){
+      connection.query(questionSql, [rows[0].template_id], async function (
+        err,
+        questionRows,
+        fields,
+      ) {
         if (err) {
           console.log(err)
           const resPayload = {
@@ -243,8 +250,8 @@ function getTemplate(investmentId){
           reject(resPayload)
         }
         let questions = new Array()
-        for(let i=0;i<questionRows.length;i++){
-          const eachQuestion = new Object();
+        for (let i = 0; i < questionRows.length; i++) {
+          const eachQuestion = new Object()
           const answers = await getExanswer(questionRows[i].question_id)
           eachQuestion.id = questionRows[i].question_id
           eachQuestion.content = questionRows[i].content
@@ -256,15 +263,13 @@ function getTemplate(investmentId){
         template.content = content
         resolve(template)
       })
-      
     })
-
   })
 }
-function getExanswer(questionId){
-  return new Promise(function(resolve, reject){
+function getExanswer(questionId) {
+  return new Promise(function (resolve, reject) {
     const sql = `SELECT * FROM ex_answers WHERE question_id = ?`
-    connection.query(sql, [questionId], function(err, rows, fields){
+    connection.query(sql, [questionId], function (err, rows, fields) {
       if (err) {
         console.log(err)
         const resPayload = {
@@ -272,24 +277,24 @@ function getExanswer(questionId){
         }
         reject(resPayload)
       }
-      resolve(rows.map((row) => ({
-        id: row.answer_id,
-        content: row.content
-      })))
+      resolve(
+        rows.map((row) => ({
+          id: row.answer_id,
+          content: row.content,
+        })),
+      )
     })
   })
 }
-
 
 // investment 리스트 읽기
 router.get(
   '/',
   wrapper(async (req, res, next) => {
-
     let investment = new Array()
     let eachInvest = new Object()
     const investSql = `SELECT * FROM investments`
-    connection.query(investSql, async function(err, investRows, fields){
+    connection.query(investSql, async function (err, investRows, fields) {
       if (err) {
         console.log(err)
         const resPayload = {
@@ -297,7 +302,7 @@ router.get(
         }
         res.status(INTERNAL_SERVER_ERROR).json(resPayload).end()
       }
-      for(let i=0;i<investRows.length;i++){
+      for (let i = 0; i < investRows.length; i++) {
         let targets = await getTarget(investRows[i].investment_id)
         eachInvest.id = investRows[i].investment_id
         eachInvest.group = investRows[i].investment_group
@@ -308,7 +313,7 @@ router.get(
       }
       investment.push(eachInvest)
       const resPayload = {
-        investment: investment
+        investment: investment,
       }
       res.status(OK).json(resPayload)
     })
